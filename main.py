@@ -34,7 +34,7 @@ app.add_middleware(
 # Initialize Docker manager
 docker_manager = DockerSessionManager()
 
-async def handle_kernel_messages(kernel_ws, client_ws: WebSocket, msg_id: str):
+async def handle_kernel_messages(kernel_ws:WebSocket, client_ws: WebSocket, msg_id: str):
     """Handle messages from the kernel and forward execution results to the client"""
     try:
         execution_count = None
@@ -139,9 +139,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             message = json.loads(data)
             logger.info(f"Received message from client: {message}")
             
-            if message["type"] == "execute":
-                # Generate a unique message ID
-                msg_id = str(uuid.uuid4())
+            msg_id = str(uuid.uuid4())
+            
+            if message["type"] in ["execute", "command"]:
+                code = message["code"]
+                
+                # If it's a command, wrap it with ! or !! for shell execution
+                if message["type"] == "command":
+                    code = f"!{code}"
                 
                 # Create Jupyter message
                 execute_request = {
@@ -155,7 +160,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     "parent_header": {},
                     "metadata": {},
                     "content": {
-                        "code": message["code"],
+                        "code": code,
                         "silent": False,
                         "store_history": True,
                         "user_expressions": {},

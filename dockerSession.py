@@ -6,19 +6,22 @@ import os
 import time
 from typing import Dict, Any
 from queue import Empty
-
+import logging
 import docker
 import requests
 import websockets
 from websockets.exceptions import WebSocketException
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 class DockerSessionManager:
     def __init__ (self,image:str="jupyter/base-notebook"):
         try:
             os.environ["DOCKER_CONFIG"] = "/dev/null"
             self.client=docker.from_env()
-            print("hellllll")
+            logger.info("Docker started")
             self.client.ping()
             self.image= image
             self.session:Dict[str,Dict[str,Any]]= {}
@@ -71,6 +74,7 @@ class DockerSessionManager:
                 else:
                         raise Exception("Did not start in Time")
                 port = container.attrs['NetworkSettings']['Ports']['8888/tcp'][0]['HostPort']
+                logger.info("getting port from container")
                 kernal_url=f"http://localhost:{port}"
                 for _ in range(10):
                     try:
@@ -98,6 +102,7 @@ class DockerSessionManager:
                 container=self.session[session_id]["container"]
                 container.stop(timeout=5)
                 container.remove()
+                logger.info(f"Docker REmoveddddd")
                 del self.session[session_id]
             except Exception as e:
                 print("error while closing session",e)
